@@ -159,7 +159,7 @@
                     duration: "30d",
                     customized_community: "customized",
                     community_yaps: true,
-                    topic_id: "KAITO"  // ✅ 여기 KAITO로 변경됨
+                    topic_id: "KAITO"
                 },
                 body: {}
             });
@@ -203,17 +203,19 @@
             let html = "";
 
             const profile = await fetchProfile(kolId);
-            console.log(profile);
 
             if (profile) {
                 html += `
-        <div class="profile">
-          <img src="${profile.icon}" />
-          <div class="profile-info">
-            <p><strong>@${profile.username}</strong> (${profile.name})</p>
-            <p>팔로워: ${profile.followers.toLocaleString()}명</p>
-          </div>
-        </div>`;
+            <div class="profile">
+                <img src="${profile.icon}" />
+                <div class="profile-info">
+                    <p><strong>@${profile.username}</strong> (${profile.name})</p>
+                    <p>팔로워: ${profile.followers.toLocaleString()}명</p>
+                    <p style="margin-top: 6px; color: #aaa; font-size: 0.95rem;">
+                        🔗 <a href="https://x.com/${profile.username}" target="_blank" style="color: #81d4fa; text-decoration: none;">X 프로필</a>
+                    </p>
+                </div>
+            </div>`;
             } else {
                 html += `<p class="error-msg">😢 프로필 정보를 불러올 수 없습니다.</p>`;
             }
@@ -231,11 +233,11 @@
                     const r30 = res30.rank ?? "N/A";
 
                     html += `
-          <div class="topic-result">
-            <h3>${topic} 프로젝트</h3>
-            <p>최근 7일 마인드쉐어: ${m7} (랭킹: ${r7})</p>
-            <p>최근 30일 마인드쉐어: ${m30} (랭킹: ${r30})</p>
-          </div>`;
+                <div class="topic-result">
+                    <h3>${topic} 프로젝트</h3>
+                    <p>최근 7일 마인드쉐어: ${m7} (랭킹: ${r7})</p>
+                    <p>최근 30일 마인드쉐어: ${m30} (랭킹: ${r30})</p>
+                </div>`;
                 }
             }
 
@@ -244,6 +246,8 @@
             button.disabled = false;
         }
     </script>
+
+
 
 </body>
 
