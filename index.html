@@ -106,7 +106,7 @@
     <div id="result"></div>
 
     <script>
-        const topics = ["KAITO", "UXLINK", "MIRA", "NEWTON", "MONAD", "HANAHANA", "THEORIQ", "OPENLEDGER", "SYMPHONY", "MNT", "HUMANITY", "BOOPBOOPFUN"];
+        const topics = ["UXLINK", "MIRA", "NEWTON", "MONAD", "HANAHANA", "THEORIQ", "OPENLEDGER", "SYMPHONY", "MNT", "HUMANITY", "BOOPBOOPFUN", "KAITO"];
 
         async function fetchMindshare(kolId, topic, duration) {
             const url = "https://hub.kaito.ai/api/v1/gateway/ai";
@@ -150,6 +150,7 @@
         async function fetchProfile(kolId) {
             const url = "https://hub.kaito.ai/api/v1/gateway/ai";
             const headers = { "Content-Type": "application/json" };
+
             const body = JSON.stringify({
                 path: "/api/yapper/public_kol_profile",
                 method: "GET",
@@ -166,8 +167,10 @@
                     body
                 });
                 const json = await res.json();
-                const info = json.result;
-                if (!info) return null;
+                console.log("✅ 프로필 응답:", json);
+
+                const info = json.result?.kol_profile || json.result;
+                if (!info || !info.icon) return null;
 
                 return {
                     icon: info.icon,
@@ -175,7 +178,8 @@
                     username: info.username,
                     followers: info.follower_count
                 };
-            } catch {
+            } catch (e) {
+                console.error("❌ fetchProfile 에러:", e);
                 return null;
             }
         }
@@ -197,7 +201,6 @@
 
             let html = "";
 
-            // 🔹 프로필 박스 먼저 출력
             const profile = await fetchProfile(kolId);
             if (profile) {
                 html += `
@@ -236,6 +239,7 @@
             button.disabled = false;
         }
     </script>
+
 
 </body>
 
