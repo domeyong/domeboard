@@ -106,46 +106,45 @@
     <div id="result"></div>
 
     <script>
-        const topics = ["UXLINK", "MIRA", "NEWTON", "MONAD", "HANAHANA", "THEORIQ", "OPENLEDGER", "SYMPHONY", "MNT", "HUMANITY", "BOOPBOOPFUN", "KAITO"];
+        const input = document.getElementById("kolInput");
+        const btn = document.getElementById("fetchBtn");
+        const result = document.getElementById("result");
 
-        async function fetchMindshare(kolId, topic, duration) {
-            const url = "https://hub.kaito.ai/api/v1/gateway/ai";
-            const headers = { "Content-Type": "application/json" };
-            const body = JSON.stringify({
-                path: "/api/yapper/public_kol_mindshare",
-                method: "GET",
-                params: {
-                    kol: kolId,
-                    type: "kol",
-                    duration: duration,
-                    customized_community: "customized",
-                    community_yaps: true,
-                    topic_id: topic
-                },
-                body: {}
-            });
+        btn.addEventListener("click", async () => {
+            const kolId = input.value.trim();
+            if (!kolId) return;
 
-            try {
-                const response = await fetch(url, {
-                    method: "POST",
-                    headers,
-                    body
-                });
+            result.innerHTML = "불러오는 중...";
 
-                if (!response.ok) return { error: `API 오류: ${response.status}` };
+            const [profile, rank7d, rank30d, mindshare7d, mindshare30d] = await Promise.all([
+                fetchProfile(kolId),
+                fetchRanking(kolId, "7d"),
+                fetchRanking(kolId, "30d"),
+                fetchMindshare(kolId, "7d"),
+                fetchMindshare(kolId, "30d")
+            ]);
 
-                const data = await response.json();
-                const result = data.resultWithKol?.[0];
-                if (!result) return { error: `${topic} 데이터 없음` };
-
-                return {
-                    mindshare: result[`last_${duration}_mindshare`] ?? null,
-                    rank: result.rank ?? null
-                };
-            } catch (e) {
-                return { error: e.message };
+            if (!profile) {
+                result.innerHTML = "😢 프로필 정보를 불러올 수 없습니다.";
+                return;
             }
-        }
+
+            result.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+        <img src="${profile.icon}" width="60" height="60" style="border-radius: 50%;" />
+        <div>
+          <div style="font-size: 1.2rem; font-weight: bold;">${profile.name}</div>
+          <div style="color: #aaa">@${profile.username} · 팔로워 ${profile.followers.toLocaleString()}</div>
+        </div>
+      </div>
+      <h2>🧠 마인드쉐어</h2>
+      <p><b>7일:</b> ${mindshare7d !== null ? mindshare7d + "%" : "조회 실패"}</p>
+      <p><b>30일:</b> ${mindshare30d !== null ? mindshare30d + "%" : "조회 실패"}</p>
+      <h2>🏆 랭킹</h2>
+      <p><b>7일:</b> ${rank7d !== null ? rank7d + "위" : "조회 실패"}</p>
+      <p><b>30일:</b> ${rank30d !== null ? rank30d + "위" : "조회 실패"}</p>
+    `;
+        });
 
         async function fetchProfile(kolId) {
             const url = "https://hub.kaito.ai/api/v1/gateway/ai";
@@ -154,23 +153,15 @@
             const body = JSON.stringify({
                 path: "/api/yapper/public_kol_profile",
                 method: "GET",
-                params: {
-                    kol: kolId
-                },
+                params: { kol: kolId },
                 body: {}
             });
 
             try {
-                const res = await fetch(url, {
-                    method: "POST",
-                    headers,
-                    body
-                });
+                const res = await fetch(url, { method: "POST", headers, body });
                 const json = await res.json();
-                console.log("✅ 프로필 응답:", json);
-
-                const info = json.result?.kol_profile || json.result;
-                if (!info || !info.icon) return null;
+                const info = json.result;
+                if (!info) return null;
 
                 return {
                     icon: info.icon,
@@ -178,68 +169,65 @@
                     username: info.username,
                     followers: info.follower_count
                 };
-            } catch (e) {
-                console.error("❌ fetchProfile 에러:", e);
+            } catch {
                 return null;
             }
         }
 
-        async function searchMindshare() {
-            const kolId = document.getElementById("kolIdInput").value.trim();
-            const resultDiv = document.getElementById("result");
-            const button = document.getElementById("searchBtn");
-            const originalText = button.innerText;
+        async function fetchMindshare(kolId, duration) {
+            const url = "https://hub.kaito.ai/api/v1/gateway/ai";
+            const headers = { "Content-Type": "application/json" };
 
-            if (!kolId) {
-                resultDiv.innerHTML = '<p class="error-msg">콜ID를 입력해주세요.</p>';
-                return;
+            const body = JSON.stringify({
+                path: "/api/yapper/get_public_kol_mindshare",
+                method: "GET",
+                params: {
+                    kol: kolId,
+                    type: "kol",
+                    duration,
+                    customized_community: "KAITO",
+                    community_yaps: true,
+                    topic_id: "KAITO"
+                },
+                body: {}
+            });
+
+            try {
+                const res = await fetch(url, { method: "POST", headers, body });
+                const json = await res.json();
+                return json.result?.mindshare_percentage ?? null;
+            } catch {
+                return null;
             }
+        }
 
-            button.innerText = "조회 중...";
-            button.disabled = true;
-            resultDiv.innerHTML = "";
+        async function fetchRanking(kolId, duration) {
+            const url = "https://hub.kaito.ai/api/v1/gateway/ai";
+            const headers = { "Content-Type": "application/json" };
 
-            let html = "";
+            const body = JSON.stringify({
+                path: "/api/yapper/get_public_kol_mindshare_ranking",
+                method: "GET",
+                params: {
+                    kol: kolId,
+                    type: "kol",
+                    duration,
+                    customized_community: "KAITO",
+                    community_yaps: true,
+                    topic_id: "KAITO"
+                },
+                body: {}
+            });
 
-            const profile = await fetchProfile(kolId);
-            if (profile) {
-                html += `
-        <div class="profile">
-          <img src="${profile.icon}" />
-          <div class="profile-info">
-            <p><strong>@${profile.username}</strong> (${profile.name})</p>
-            <p>팔로워: ${profile.followers.toLocaleString()}명</p>
-          </div>
-        </div>`;
+            try {
+                const res = await fetch(url, { method: "POST", headers, body });
+                const json = await res.json();
+                return json.result?.ranking ?? null;
+            } catch {
+                return null;
             }
-
-            for (const topic of topics) {
-                const res7 = await fetchMindshare(kolId, topic, "7d");
-                const res30 = await fetchMindshare(kolId, topic, "30d");
-
-                if (res7.error || res30.error) {
-                    html += `<div class="topic-result"><h3>${topic} 프로젝트</h3><p class="error-msg">${res7.error || res30.error}</p></div>`;
-                } else {
-                    const m7 = res7.mindshare?.toFixed(8) ?? "N/A";
-                    const r7 = res7.rank ?? "N/A";
-                    const m30 = res30.mindshare?.toFixed(8) ?? "N/A";
-                    const r30 = res30.rank ?? "N/A";
-
-                    html += `
-          <div class="topic-result">
-            <h3>${topic} 프로젝트</h3>
-            <p>최근 7일 마인드쉐어: ${m7} (랭킹: ${r7})</p>
-            <p>최근 30일 마인드쉐어: ${m30} (랭킹: ${r30})</p>
-          </div>`;
-                }
-            }
-
-            resultDiv.innerHTML = html;
-            button.innerText = originalText;
-            button.disabled = false;
         }
     </script>
-
 
 </body>
 
