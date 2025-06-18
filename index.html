@@ -23,7 +23,7 @@
 
         p.description {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 10px;
             color: #bbb;
         }
 
@@ -95,11 +95,25 @@
             color: #ff7961;
             font-weight: 600;
         }
+
+        .credit {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+        }
+
+        .credit a {
+            color: #64b5f6;
+            text-decoration: none;
+        }
     </style>
 </head>
 
 <body>
     <h1>DomeBoard</h1>
+    <div class="credit">
+        ✨ Made by <a href="https://x.com/domeyong__" target="_blank">@domeyong__</a>
+    </div>
     <p class="description">도미보드 마인드쉐어 조회기<br>콜ID를 입력하고 도미보드 버튼을 눌러주세요.</p>
     <input id="kolIdInput" placeholder="ex. 12345714467480694787" type="text" />
     <button id="searchBtn" onclick="searchMindshare()">도미보드 조회</button>
@@ -145,7 +159,9 @@
                     icon: info.icon,
                     name: info.name,
                     username: info.username,
-                    followers: info.follower_count
+                    followers: info.follower_count,
+                    following: info.following_count,
+                    smart: info.smart_follower_count
                 };
             } catch {
                 return null;
@@ -173,16 +189,20 @@
 
             if (profile) {
                 html += `
-        <div class="profile">
-            <img src="${profile.icon}" />
-            <div class="profile-info">
-                <p><strong>@${profile.username}</strong> (${profile.name})</p>
-                <p>팔로워: ${profile.followers.toLocaleString()}명</p>
-                <p style="margin-top: 6px; color: #aaa; font-size: 0.95rem;">
-                    🔗 <a href="https://x.com/${profile.username}" target="_blank" style="color: #81d4fa; text-decoration: none;">X 프로필</a>
-                </p>
-            </div>
-        </div>`;
+            <div class="profile">
+                <img src="${profile.icon}" />
+                <div class="profile-info">
+                    <p><strong>@${profile.username}</strong> (${profile.name})</p>
+                    <p>
+                        팔로잉: ${profile.following.toLocaleString()}명 |
+                        팔로워: ${profile.followers.toLocaleString()}명
+                    </p>
+                    <p>스마트팔로워: ${profile.smart.toLocaleString()}명</p>
+                    <p style="margin-top: 6px; color: #aaa; font-size: 0.95rem;">
+                        🔗 <a href="https://x.com/${profile.username}" target="_blank" style="color: #81d4fa; text-decoration: none;">X 프로필</a>
+                    </p>
+                </div>
+            </div>`;
             } else {
                 html += `<p class="error-msg">😢 프로필 정보를 불러올 수 없습니다.</p>`;
             }
@@ -200,11 +220,11 @@
                     const r30 = res30.rank ?? "N/A";
 
                     html += `
-            <div class="topic-result">
-                <h3>${topic} 프로젝트</h3>
-                <p>최근 7일 마인드쉐어: ${m7} (랭킹: ${r7})</p>
-                <p>최근 30일 마인드쉐어: ${m30} (랭킹: ${r30})</p>
-            </div>`;
+                <div class="topic-result">
+                    <h3>${topic} 프로젝트</h3>
+                    <p>최근 7일 마인드쉐어: ${m7} (랭킹: ${r7})</p>
+                    <p>최근 30일 마인드쉐어: ${m30} (랭킹: ${r30})</p>
+                </div>`;
                 }
             }
 
@@ -213,8 +233,6 @@
             button.disabled = false;
         }
     </script>
-
-
 </body>
 
 </html>
