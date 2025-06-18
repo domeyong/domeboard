@@ -119,8 +119,10 @@
                 const result = data.resultWithKol?.[0];
                 if (!result) return { error: `${topic} 데이터 없음` };
 
+                const field = duration === "7d" ? "last_7d_mindshare" : "last_30d_mindshare";
+
                 return {
-                    mindshare: result.mindshare ?? null,
+                    mindshare: result[field] ?? null,
                     rank: result.rank ?? null
                 };
             } catch (e) {
@@ -211,7 +213,6 @@
             button.disabled = false;
         }
     </script>
-
 
 
 </body>
