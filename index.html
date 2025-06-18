@@ -109,29 +109,10 @@
         const topics = ["UXLINK", "MIRA", "NEWTON", "MONAD", "HANAHANA", "THEORIQ", "INFINEX", "OPENLEDGER", "MITOSIS", "PORTALPORTAL", "SYMPHONY", "MNT", "HUMANITY", "BOOPBOOPFUN", "GOATNETWORK", "KAITO"];
 
         async function fetchMindshare(kolId, topic, duration) {
-            const url = "https://hub.kaito.ai/api/v1/gateway/ai";
-            const headers = { "Content-Type": "application/json" };
-            const body = JSON.stringify({
-                path: "/api/yapper/public_kol_mindshare",
-                method: "GET",
-                params: {
-                    kol: kolId,
-                    type: "kol",
-                    duration: duration,
-                    customized_community: "customized",
-                    community_yaps: true,
-                    topic_id: topic
-                },
-                body: {}
-            });
+            const url = `https://hub.kaito.ai/api/v1/gateway/ai/kol/mindshare?kol=${kolId}&type=kol&duration=${duration}&customized_community=customized&community_yaps=true&topic_id=${topic}`;
 
             try {
-                const response = await fetch(url, {
-                    method: "POST",
-                    headers,
-                    body
-                });
-
+                const response = await fetch(url);
                 if (!response.ok) return { error: `API 오류: ${response.status}` };
 
                 const data = await response.json();
@@ -139,7 +120,7 @@
                 if (!result) return { error: `${topic} 데이터 없음` };
 
                 return {
-                    mindshare: result[`last_${duration}_mindshare`] ?? null,
+                    mindshare: result.mindshare ?? null,
                     rank: result.rank ?? null
                 };
             } catch (e) {
@@ -148,28 +129,12 @@
         }
 
         async function fetchProfile(kolId) {
-            const url = "https://hub.kaito.ai/api/v1/gateway/ai";
-            const headers = { "Content-Type": "application/json" };
-            const body = JSON.stringify({
-                path: "/api/yapper/public_kol_mindshare",
-                method: "GET",
-                params: {
-                    kol: kolId,
-                    type: "kol",
-                    duration: "30d",
-                    customized_community: "customized",
-                    community_yaps: true,
-                    topic_id: "KAITO"
-                },
-                body: {}
-            });
+            const url = `https://hub.kaito.ai/api/v1/gateway/ai/kol/mindshare?kol=${kolId}&type=kol&duration=30d&customized_community=customized&community_yaps=true&topic_id=KAITO`;
 
             try {
-                const res = await fetch(url, {
-                    method: "POST",
-                    headers,
-                    body
-                });
+                const res = await fetch(url);
+                if (!res.ok) return null;
+
                 const json = await res.json();
                 const info = json.resultWithKol?.[0];
                 if (!info) return null;
@@ -206,16 +171,16 @@
 
             if (profile) {
                 html += `
-            <div class="profile">
-                <img src="${profile.icon}" />
-                <div class="profile-info">
-                    <p><strong>@${profile.username}</strong> (${profile.name})</p>
-                    <p>팔로워: ${profile.followers.toLocaleString()}명</p>
-                    <p style="margin-top: 6px; color: #aaa; font-size: 0.95rem;">
-                        🔗 <a href="https://x.com/${profile.username}" target="_blank" style="color: #81d4fa; text-decoration: none;">X 프로필</a>
-                    </p>
-                </div>
-            </div>`;
+        <div class="profile">
+            <img src="${profile.icon}" />
+            <div class="profile-info">
+                <p><strong>@${profile.username}</strong> (${profile.name})</p>
+                <p>팔로워: ${profile.followers.toLocaleString()}명</p>
+                <p style="margin-top: 6px; color: #aaa; font-size: 0.95rem;">
+                    🔗 <a href="https://x.com/${profile.username}" target="_blank" style="color: #81d4fa; text-decoration: none;">X 프로필</a>
+                </p>
+            </div>
+        </div>`;
             } else {
                 html += `<p class="error-msg">😢 프로필 정보를 불러올 수 없습니다.</p>`;
             }
@@ -233,11 +198,11 @@
                     const r30 = res30.rank ?? "N/A";
 
                     html += `
-                <div class="topic-result">
-                    <h3>${topic} 프로젝트</h3>
-                    <p>최근 7일 마인드쉐어: ${m7} (랭킹: ${r7})</p>
-                    <p>최근 30일 마인드쉐어: ${m30} (랭킹: ${r30})</p>
-                </div>`;
+            <div class="topic-result">
+                <h3>${topic} 프로젝트</h3>
+                <p>최근 7일 마인드쉐어: ${m7} (랭킹: ${r7})</p>
+                <p>최근 30일 마인드쉐어: ${m30} (랭킹: ${r30})</p>
+            </div>`;
                 }
             }
 
