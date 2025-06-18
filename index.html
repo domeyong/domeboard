@@ -48,11 +48,24 @@
             cursor: pointer;
             color: #121212;
             font-weight: 700;
-            transition: background-color 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
 
-        button:hover {
-            background-color: #42a5f5;
+        #progressInsideBtn {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background-color: rgba(255, 255, 255, 0.25);
+            z-index: 0;
+            transition: width 0.2s ease;
+        }
+
+        #searchBtn span {
+            position: relative;
+            z-index: 1;
         }
 
         #result {
@@ -116,7 +129,13 @@
     </div>
     <p class="description">도미보드 마인드쉐어 조회기<br>콜ID를 입력하고 도미보드 버튼을 눌러주세요.</p>
     <input id="kolIdInput" placeholder="ex. 12345714467480694787" type="text" />
-    <button id="searchBtn" onclick="searchMindshare()">도미보드 조회</button>
+
+    <!-- 🔵 버튼 안에 게이지 내장 -->
+    <button id="searchBtn" onclick="searchMindshare()">
+        <div id="progressInsideBtn"></div>
+        <span>도미보드 조회</span>
+    </button>
+
     <div id="result"></div>
 
     <script>
@@ -172,15 +191,17 @@
             const kolId = document.getElementById("kolIdInput").value.trim();
             const resultDiv = document.getElementById("result");
             const button = document.getElementById("searchBtn");
-            const originalText = button.innerText;
+            const btnText = button.querySelector("span");
+            const progressBar = document.getElementById("progressInsideBtn");
 
             if (!kolId) {
                 resultDiv.innerHTML = '<p class="error-msg">콜ID를 입력해주세요.</p>';
                 return;
             }
 
-            button.innerText = "조회 중...";
+            btnText.innerText = "조회 중...";
             button.disabled = true;
+            progressBar.style.width = "0%";
             resultDiv.innerHTML = "";
 
             let html = "";
@@ -207,9 +228,14 @@
                 html += `<p class="error-msg">😢 프로필 정보를 불러올 수 없습니다.</p>`;
             }
 
-            for (const topic of topics) {
+            for (let i = 0; i < topics.length; i++) {
+                const topic = topics[i];
                 const res7 = await fetchMindshare(kolId, topic, "7d");
                 const res30 = await fetchMindshare(kolId, topic, "30d");
+
+                const percent = Math.round(((i + 1) / topics.length) * 100);
+                progressBar.style.width = `${percent}%`;
+                btnText.innerText = `조회 중... (${percent}%)`;
 
                 if (res7.error || res30.error) {
                     html += `<div class="topic-result"><h3>${topic} 프로젝트</h3><p class="error-msg">${res7.error || res30.error}</p></div>`;
@@ -228,9 +254,14 @@
                 }
             }
 
+            btnText.innerText = "✅ 완료";
+            setTimeout(() => {
+                progressBar.style.width = "0%";
+                btnText.innerText = "도미보드 조회";
+                button.disabled = false;
+            }, 1200);
+
             resultDiv.innerHTML = html;
-            button.innerText = originalText;
-            button.disabled = false;
         }
     </script>
 </body>
