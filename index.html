@@ -130,7 +130,6 @@
     <p class="description">도미보드 마인드쉐어 조회기<br>콜ID를 입력하고 도미보드 버튼을 눌러주세요.</p>
     <input id="kolIdInput" placeholder="ex. 12345714467480694787" type="text" />
 
-    <!-- 🔵 버튼 안에 게이지 내장 -->
     <button id="searchBtn" onclick="searchMindshare()">
         <div id="progressInsideBtn"></div>
         <span>도미보드 조회</span>
@@ -139,7 +138,33 @@
     <div id="result"></div>
 
     <script>
-        const topics = ["UXLINK", "MIRA", "NEWTON", "MONAD", "HANAHANA", "THEORIQ", "INFINEX", "OPENLEDGER", "PEAQ", "MITOSIS", "SKATE", "PORTALPORTAL", "SYMPHONY", "MNT", "HUMANITY", "BOOPBOOPFUN", "GOATNETWORK", "KAITO"];
+        const topics = [
+            "UXLINK", "MIRA", "NEWTON", "MONAD", "HANAHANA", "THEORIQ", "INFINEX",
+            "OPENLEDGER", "PEAQ", "MITOSIS", "SKATE", "PORTALPORTAL", "SYMPHONY",
+            "MNT", "HUMANITY", "BOOPBOOPFUN", "GOATNETWORK", "KAITO", "SATLAYER"
+        ];
+
+        const topicDisplayNames = {
+            UXLINK: "UXLINK",
+            MIRA: "Mira",
+            NEWTON: "Newton",
+            MONAD: "Monad",
+            HANAHANA: "Hanahana",
+            THEORIQ: "Theoriq",
+            INFINEX: "Infinex",
+            OPENLEDGER: "OpenLedger",
+            PEAQ: "Peaq",
+            MITOSIS: "Mitosis",
+            SKATE: "Skate",
+            PORTALPORTAL: "Portal to BTC",
+            SYMPHONY: "Symphony",
+            MNT: "MNT",
+            HUMANITY: "Humanity",
+            BOOPBOOPFUN: "BoopBoopFun",
+            GOATNETWORK: "GOAT Network",
+            KAITO: "Kaito",
+            SATLAYER: "Satlayer"
+        };
 
         async function fetchMindshare(kolId, topic, duration) {
             const url = `https://hub.kaito.ai/api/v1/gateway/ai/kol/mindshare?kol=${kolId}&type=kol&duration=${duration}&customized_community=customized&community_yaps=true&topic_id=${topic}`;
@@ -210,26 +235,28 @@
 
             if (profile) {
                 html += `
-            <div class="profile">
-                <img src="${profile.icon}" />
-                <div class="profile-info">
-                    <p><strong>@${profile.username}</strong> (${profile.name})</p>
-                    <p>
-                        팔로잉: ${profile.following.toLocaleString()}명 |
-                        팔로워: ${profile.followers.toLocaleString()}명
-                    </p>
-                    <p>스마트팔로워: ${profile.smart.toLocaleString()}명</p>
-                    <p style="margin-top: 6px; color: #aaa; font-size: 0.95rem;">
-                        🔗 <a href="https://x.com/${profile.username}" target="_blank" style="color: #81d4fa; text-decoration: none;">X 프로필</a>
-                    </p>
-                </div>
-            </div>`;
+                <div class="profile">
+                    <img src="${profile.icon}" />
+                    <div class="profile-info">
+                        <p><strong>@${profile.username}</strong> (${profile.name})</p>
+                        <p>
+                            팔로잉: ${profile.following.toLocaleString()}명 |
+                            팔로워: ${profile.followers.toLocaleString()}명
+                        </p>
+                        <p>스마트팔로워: ${profile.smart.toLocaleString()}명</p>
+                        <p style="margin-top: 6px; color: #aaa; font-size: 0.95rem;">
+                            🔗 <a href="https://x.com/${profile.username}" target="_blank" style="color: #81d4fa; text-decoration: none;">X 프로필</a>
+                        </p>
+                    </div>
+                </div>`;
             } else {
                 html += `<p class="error-msg">😢 프로필 정보를 불러올 수 없습니다.</p>`;
             }
 
             for (let i = 0; i < topics.length; i++) {
                 const topic = topics[i];
+                const displayName = topicDisplayNames[topic] || topic;
+
                 const res7 = await fetchMindshare(kolId, topic, "7d");
                 const res30 = await fetchMindshare(kolId, topic, "30d");
 
@@ -238,19 +265,19 @@
                 btnText.innerText = `조회 중... (${percent}%)`;
 
                 if (res7.error || res30.error) {
-                    html += `<div class="topic-result"><h3>${topic} 프로젝트</h3><p class="error-msg">${res7.error || res30.error}</p></div>`;
+                    html += `<div class="topic-result"><h3>${displayName}</h3><p class="error-msg">${res7.error || res30.error}</p></div>`;
                 } else {
-                    const m7 = res7.mindshare?.toFixed(8) ?? "N/A";
+                    const m7 = res7.mindshare !== null ? (res7.mindshare * 100).toFixed(2) + "%" : "N/A";
                     const r7 = res7.rank ?? "N/A";
-                    const m30 = res30.mindshare?.toFixed(8) ?? "N/A";
+                    const m30 = res30.mindshare !== null ? (res30.mindshare * 100).toFixed(2) + "%" : "N/A";
                     const r30 = res30.rank ?? "N/A";
 
                     html += `
-                <div class="topic-result">
-                    <h3>${topic} 프로젝트</h3>
-                    <p>최근 7일 마인드쉐어: ${m7} (랭킹: ${r7})</p>
-                    <p>최근 30일 마인드쉐어: ${m30} (랭킹: ${r30})</p>
-                </div>`;
+                    <div class="topic-result">
+                        <h3>${displayName}</h3>
+                        <p>최근 7일 마인드쉐어: ${m7} (랭킹: ${r7})</p>
+                        <p>최근 30일 마인드쉐어: ${m30} (랭킹: ${r30})</p>
+                    </div>`;
                 }
             }
 
