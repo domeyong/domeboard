@@ -133,7 +133,12 @@
     <div class="credit">
         ✨ Made by <a href="https://x.com/domeyong__" target="_blank">@domeyong__</a>
     </div>
-    <p class="description">도미보드 마인드쉐어 조회기<br>콜ID를 입력하고 도미보드 버튼을 눌러주세요.</p>
+    <p class="description">
+        도미보드 마인드쉐어 조회기<br>
+        콜ID를 입력하고 도미보드 버튼을 눌러주세요.<br><br>
+        • 프로젝트 참여기록이 없으면 마인드쉐어 100위 값이 출력되지 않습니다.<br>
+        • 100위 값을 구하기 위해 로딩 속도가 다소 느릴 수 있습니다.
+    </p>
     <input id="kolIdInput" placeholder="ex. 12345714467480694787" type="text" />
     <select id="topicSelect"></select>
 
@@ -145,6 +150,9 @@
     <div id="result"></div>
 
     <script>
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
         const topics = [
             "UXLINK", "MIRA", "NEWTON", "MONAD", "HANAHANA", "THEORIQ", "INFINEX",
             "OPENLEDGER", "PEAQ", "MITOSIS", "SKATE", "PORTALPORTAL", "SYMPHONY",
@@ -152,62 +160,70 @@
         ];
 
         const topicDisplayNames = {
-            UXLINK: "UXLINK",
-            MIRA: "Mira",
-            NEWTON: "Newton",
-            MONAD: "Monad",
-            HANAHANA: "Hanahana",
-            THEORIQ: "Theoriq",
-            INFINEX: "Infinex",
-            OPENLEDGER: "OpenLedger",
-            PEAQ: "Peaq",
-            MITOSIS: "Mitosis",
-            SKATE: "Skate",
-            PORTALPORTAL: "Portal to BTC",
-            SYMPHONY: "Symphony",
-            MNT: "MNT",
-            HUMANITY: "Humanity",
-            BOOPBOOPFUN: "BoopBoopFun",
-            GOATNETWORK: "GOAT Network",
-            KAITO: "Kaito",
-            SATLAYER: "Satlayer"
+            UXLINK: "UXLINK", MIRA: "Mira", NEWTON: "Newton", MONAD: "Monad", HANAHANA: "Hanahana",
+            THEORIQ: "Theoriq", INFINEX: "Infinex", OPENLEDGER: "OpenLedger", PEAQ: "Peaq", MITOSIS: "Mitosis",
+            SKATE: "Skate", PORTALPORTAL: "Portal to BTC", SYMPHONY: "Symphony", MNT: "MNT",
+            HUMANITY: "Humanity", BOOPBOOPFUN: "BoopBoopFun", GOATNETWORK: "GOAT Network",
+            KAITO: "Kaito", SATLAYER: "Satlayer"
         };
 
         let currentKolId = null;
-        const mindshareCache = {};
-
-        async function fetchProfile(kolId) {
-            const url = `https://hub.kaito.ai/api/v1/gateway/ai/kol/mindshare?kol=${kolId}&type=kol&duration=30d&customized_community=customized&community_yaps=true&topic_id=KAITO`;
-            try {
-                const res = await fetch(url);
-                if (!res.ok) return null;
-                const json = await res.json();
-                return json.resultWithKol?.[0] || null;
-            } catch {
-                return null;
-            }
-        }
 
         async function fetchMindshareByDuration(kolId, topic, duration) {
             const url = `https://hub.kaito.ai/api/v1/gateway/ai/kol/mindshare?kol=${kolId}&type=kol&duration=${duration}&customized_community=customized&community_yaps=true&topic_id=${topic}&_=${Date.now()}`;
             try {
                 const res = await fetch(url);
                 const json = await res.json();
+
                 return json.resultWithKol?.[0] || null;
-            } catch {
+            } catch (err) {
+
                 return null;
             }
         }
 
-        async function fetchRankOnly(kolId, topic, duration) {
-            const url = `https://hub.kaito.ai/api/v1/gateway/ai/kol/mindshare?kol=${kolId}&type=kol&duration=${duration}&customized_community=customized&community_yaps=true&topic_id=${topic}&_=${Date.now()}`;
+        async function fetchProfile(kolId) {
+            const url = `https://hub.kaito.ai/api/v1/gateway/ai/kol/mindshare?kol=${kolId}&type=kol&duration=30d&customized_community=customized&community_yaps=true&topic_id=KAITO`;
             try {
                 const res = await fetch(url);
                 const json = await res.json();
-                return json.resultWithKol?.[0]?.rank ?? null;
-            } catch {
+
+                return json.resultWithKol?.[0] || null;
+            } catch (err) {
+                console.error("[❌ fetchProfile] 실패:", err);
                 return null;
             }
+        }
+
+        async function fetchRank100Data(topic, duration) {
+            const url = `https://hub.kaito.ai/api/v1/gateway/ai/kol/mindshare?type=heatmap&duration=${duration}&sort_type=desc&top_n=100&customized_community=customized&community_yaps=true&topic_id=${topic}`;
+            try {
+                const res = await fetch(url);
+                const json = await res.json();
+
+                const data = json.resultWithKol;
+                if (!data || !Array.isArray(data)) return null;
+                return data.find(user => user.rank === 100) || data[data.length - 1] || null;
+            } catch (err) {
+                console.error(`[❌ fetchRank100Data] ${topic} ${duration} 실패:`, err);
+                return null;
+            }
+        }
+
+        function formatPercentage(v) {
+            return v != null ? (v * 100).toFixed(6) + "%" : "N/A";
+        }
+
+        function formatDelta(value) {
+            if (value === undefined || value === null) return "";
+            const delta = (value * 100).toFixed(6);
+            if (value > 0) return `<span style='color:#4caf50'>▲${delta}%</span>`;
+            if (value < 0) return `<span style='color:#f44336'>▼${Math.abs(delta)}%</span>`;
+            return `<span style='color:#aaa'>-</span>`;
+        }
+
+        function formatRank(v) {
+            return v !== null && v !== undefined && v !== "NA" ? `#${v}` : "N/A";
         }
 
         async function handleKolIdInput() {
@@ -216,6 +232,8 @@
             const dropdown = document.getElementById("topicSelect");
             const progressBar = document.getElementById("progressInsideBtn");
             const btnText = document.querySelector("#searchBtn span");
+
+
 
             if (!kolId) {
                 profileDiv.innerHTML = `<p class="error-msg">콜ID를 입력해주세요.</p>`;
@@ -231,25 +249,28 @@
 
             const profile = await fetchProfile(kolId);
             if (profile) {
-                let html = `
-                <div class="profile">
-                    <img src="${profile.icon}" />
-                    <div class="profile-info">
-                        <p><strong>@${profile.username}</strong> (${profile.name})</p>
-                        <p>팔로잉: ${profile.following_count.toLocaleString()}명 | 팔로워: ${profile.follower_count.toLocaleString()}명</p>
-                        <p>스마트팔로워: ${profile.smart_follower_count.toLocaleString()}명</p>
-                        <p style="margin-top: 6px; color: #aaa; font-size: 0.95rem;">
-                            🔗 <a href="https://x.com/${profile.username}" target="_blank" style="color: #81d4fa; text-decoration: none;">X 프로필</a>
-                        </p>
-                    </div>
+
+                profileDiv.innerHTML = `
+            <div class="profile">
+                <img src="${profile.icon}" />
+                <div class="profile-info">
+                    <p><strong>@${profile.username}</strong> (${profile.name})</p>
+                    <p>팔로잉: ${profile.following_count.toLocaleString()}명 | 팔로워: ${profile.follower_count.toLocaleString()}명</p>
+                    <p>스마트팔로워: ${profile.smart_follower_count.toLocaleString()}명</p>
+                    <p style="margin-top: 6px; color: #aaa; font-size: 0.95rem;">
+                        🔗 <a href="https://x.com/${profile.username}" target="_blank" style="color: #81d4fa; text-decoration: none;">X 프로필</a>
+                    </p>
                 </div>
-                <div id="topicResultBox"></div>
-            `;
-                profileDiv.innerHTML = html;
+            </div>
+            <div id="topicResultBox"></div>
+        `;
                 dropdown.style.display = "block";
                 dropdown.value = "UXLINK";
+                await sleep(1500);         // ✅ 여기 추가!
                 await updateMindshare();
+
             } else {
+                console.warn("❌ 프로필 불러오기 실패");
                 profileDiv.innerHTML = `<p class="error-msg">❌ 프로필 불러오기 실패</p>`;
             }
 
@@ -260,69 +281,89 @@
             }, 1000);
         }
 
+        const compareBlock = (label, myShare, topShare) => {
+            if (typeof myShare !== "number" || typeof topShare !== "number") return "";
+            const diff = (topShare - myShare) * 100;
+            return `
+            <p style="margin-bottom: 4px; color: #ccc;">
+                🧭 실시간 100위 (${label}): ${(topShare * 100).toFixed(4)}%
+            </p>
+            <p style="margin-bottom: 10px; color: #aaa;">
+                ${diff > 0 ? `💡 100위 진입까지 ${diff.toFixed(4)}% ↑ 필요!` : `🎉 이미 Top 100 안에 있어요!`}
+            </p>`;
+        };
+
         async function updateMindshare() {
             if (!currentKolId) return;
+
             const topic = document.getElementById("topicSelect").value;
             const box = document.getElementById("topicResultBox");
             const progressBar = document.getElementById("progressInsideBtn");
-            const cacheKey = `${currentKolId}_${topic}`;
 
-            if (mindshareCache[cacheKey]) {
-                renderMindshare(mindshareCache[cacheKey], topic);
-                return;
-            }
+
 
             box.innerHTML = "<p>조회 중...</p>";
             progressBar.style.width = "30%";
 
             const res7 = await fetchMindshareByDuration(currentKolId, topic, "7d");
-            progressBar.style.width = "50%";
-            const res30 = await fetchMindshareByDuration(currentKolId, topic, "30d");
-            progressBar.style.width = "70%";
-            const res12 = await fetchMindshareByDuration(currentKolId, topic, "12m");
-            progressBar.style.width = "90%";
 
-            if (!res7 && !res30 && !res12) {
-                box.innerHTML = `<p class="error-msg">⚠️ 해당 토픽에 참여기록이 없습니다.</p>`;
-                progressBar.style.width = "0%";
-                return;
+            await sleep(500);  // ← 여기
+
+            const res30 = await fetchMindshareByDuration(currentKolId, topic, "30d");
+
+            await sleep(500);
+
+            const res12 = await fetchMindshareByDuration(currentKolId, topic, "12m");
+
+            await sleep(500);
+
+            const top100_7d = await fetchRank100Data(topic, "7d");
+
+            await sleep(500);
+
+            const top100_30d = await fetchRank100Data(topic, "30d");
+
+
+
+            const m7 = formatPercentage(res7?.last_7d_mindshare);
+            const m30 = formatPercentage(res30?.last_30d_mindshare);
+            const m12 = formatPercentage(res12?.last_12m_mindshare);
+
+            let comparisonNote = "";
+            if (res7?.last_7d_mindshare && top100_7d?.mindshare) {
+                comparisonNote += compareBlock("7일", res7.last_7d_mindshare, top100_7d.mindshare);
+            } else {
+                console.warn("⚠️ compareBlock 실패 (7일)");
             }
 
-            const resultData = { res7, res30, res12 };
-            mindshareCache[cacheKey] = resultData;
-            await renderMindshare(resultData, topic);
-
-            progressBar.style.width = "100%";
-            setTimeout(() => progressBar.style.width = "0%", 800);
-        }
-
-        function formatPercentage(v) {
-            return v != null ? (v * 100).toFixed(6) + "%" : "N/A";
-        }
-
-        function formatRank(v) {
-            return v !== null && v !== undefined && v !== "NA" ? `#${v}` : "N/A";
-        }
-
-        async function renderMindshare({ res7, res30, res12 }, topic) {
-            const box = document.getElementById("topicResultBox");
-
-            const m7 = formatPercentage(res7?.mindshare);
-            const m30 = formatPercentage(res30?.mindshare);
-            const m12 = formatPercentage(res12?.mindshare);
+            if (res30?.last_30d_mindshare && top100_30d?.mindshare) {
+                comparisonNote += compareBlock("30일", res30.last_30d_mindshare, top100_30d.mindshare);
+            } else {
+                console.warn("⚠️ compareBlock 실패 (30일)");
+            }
 
             const r7 = formatRank(res7?.rank);
             const r30 = formatRank(res30?.rank);
             const r12 = formatRank(res12?.rank);
 
+            const d7 = formatDelta(res7?.change_7d);
+            const d30 = formatDelta(res30?.change_30d);
+            const d12 = formatDelta(res12?.change_12m);
+
             box.innerHTML = `
         <div class="topic-result">
             <h3>${topicDisplayNames[topic]}</h3>
-            <p>📊 최근 7일 마인드쉐어: ${m7} | 🏅 랭킹: ${r7}</p>
-            <p>📊 최근 30일 마인드쉐어: ${m30} | 🏅 랭킹: ${r30}</p>
-            <p>📊 최근 1년 마인드쉐어: ${m12} | 🏅 랭킹: ${r12}</p>
+            ${comparisonNote}
+            <p>📊 최근 7일 마인드쉐어: ${m7} ${d7} | 🏅 랭킹: ${r7}</p>
+            <p>📊 최근 30일 마인드쉐어: ${m30} ${d30} | 🏅 랭킹: ${r30}</p>
+            <p>📊 최근 1년 마인드쉐어: ${m12} ${d12} | 🏅 랭킹: ${r12}</p>
         </div>
-    `;
+        `;
+
+            progressBar.style.width = "100%";
+            setTimeout(() => {
+                progressBar.style.width = "0%";
+            }, 800);
         }
 
         const selectEl = document.getElementById("topicSelect");
@@ -335,6 +376,7 @@
 
         document.getElementById("topicSelect").addEventListener("change", updateMindshare);
     </script>
+
 
 
 
