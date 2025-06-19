@@ -267,9 +267,9 @@
                 if (res7.error || res30.error) {
                     html += `<div class="topic-result"><h3>${displayName}</h3><p class="error-msg">${res7.error || res30.error}</p></div>`;
                 } else {
-                    const m7 = res7.mindshare !== null ? (res7.mindshare * 100).toFixed(2) + "%" : "N/A";
+                    const m7 = res7.mindshare !== null ? (res7.mindshare * 100).toFixed(4) + "%" : "N/A";
                     const r7 = res7.rank ?? "N/A";
-                    const m30 = res30.mindshare !== null ? (res30.mindshare * 100).toFixed(2) + "%" : "N/A";
+                    const m30 = res30.mindshare !== null ? (res30.mindshare * 100).toFixed(4) + "%" : "N/A";
                     const r30 = res30.rank ?? "N/A";
 
                     html += `
