@@ -39,6 +39,10 @@
             margin-top: 12px;
         }
 
+        #topicSelect {
+            display: none;
+        }
+
         button {
             width: 100%;
             margin-top: 16px;
@@ -133,7 +137,7 @@
     <input id="kolIdInput" placeholder="ex. 12345714467480694787" type="text" />
     <select id="topicSelect"></select>
 
-    <button id="searchBtn" onclick="searchMindshare()">
+    <button id="searchBtn" onclick="handleKolIdInput()">
         <div id="progressInsideBtn"></div>
         <span>도미보드 조회</span>
     </button>
@@ -169,12 +173,8 @@
             SATLAYER: "Satlayer"
         };
 
-        async function fetchFullMindshare(kolId, topic) {
-            const url = `https://hub.kaito.ai/api/v1/gateway/ai/kol/mindshare?kol=${kolId}&type=kol&duration=30d&customized_community=customized&community_yaps=true&topic_id=${topic}`;
-            const res = await fetch(url);
-            const data = await res.json();
-            return data.resultWithKol?.[0] || null;
-        }
+        let currentKolId = null;
+        const mindshareCache = {};
 
         async function fetchProfile(kolId) {
             const url = `https://hub.kaito.ai/api/v1/gateway/ai/kol/mindshare?kol=${kolId}&type=kol&duration=30d&customized_community=customized&community_yaps=true&topic_id=KAITO`;
@@ -182,93 +182,149 @@
                 const res = await fetch(url);
                 if (!res.ok) return null;
                 const json = await res.json();
-                const info = json.resultWithKol?.[0];
-                return info || null;
+                return json.resultWithKol?.[0] || null;
             } catch {
                 return null;
             }
         }
 
-        function formatDelta(value) {
-            if (value === undefined || value === null) return "";
-            const delta = (value * 100).toFixed(6);
-            if (value > 0) return `<span style='color:#4caf50'>▲${delta}%</span>`;
-            if (value < 0) return `<span style='color:#f44336'>▼${Math.abs(delta)}%</span>`;
-            return `<span style='color:#aaa'>-</span>`;
+        async function fetchMindshareByDuration(kolId, topic, duration) {
+            const url = `https://hub.kaito.ai/api/v1/gateway/ai/kol/mindshare?kol=${kolId}&type=kol&duration=${duration}&customized_community=customized&community_yaps=true&topic_id=${topic}&_=${Date.now()}`;
+            try {
+                const res = await fetch(url);
+                const json = await res.json();
+                return json.resultWithKol?.[0] || null;
+            } catch {
+                return null;
+            }
         }
 
-        async function searchMindshare() {
+        async function fetchRankOnly(kolId, topic, duration) {
+            const url = `https://hub.kaito.ai/api/v1/gateway/ai/kol/mindshare?kol=${kolId}&type=kol&duration=${duration}&customized_community=customized&community_yaps=true&topic_id=${topic}&_=${Date.now()}`;
+            try {
+                const res = await fetch(url);
+                const json = await res.json();
+                return json.resultWithKol?.[0]?.rank ?? null;
+            } catch {
+                return null;
+            }
+        }
+
+        async function handleKolIdInput() {
             const kolId = document.getElementById("kolIdInput").value.trim();
-            const selectedTopic = document.getElementById("topicSelect").value;
-            const resultDiv = document.getElementById("result");
-            const button = document.getElementById("searchBtn");
-            const btnText = button.querySelector("span");
+            const profileDiv = document.getElementById("result");
+            const dropdown = document.getElementById("topicSelect");
             const progressBar = document.getElementById("progressInsideBtn");
+            const btnText = document.querySelector("#searchBtn span");
 
             if (!kolId) {
-                resultDiv.innerHTML = '<p class="error-msg">콜ID를 입력해주세요.</p>';
+                profileDiv.innerHTML = `<p class="error-msg">콜ID를 입력해주세요.</p>`;
+                dropdown.style.display = "none";
                 return;
             }
 
-            btnText.innerText = "조회 중...";
-            button.disabled = true;
+            currentKolId = kolId;
+            profileDiv.innerHTML = "<p>불러오는 중...</p>";
+            dropdown.style.display = "none";
             progressBar.style.width = "30%";
-            resultDiv.innerHTML = "";
+            btnText.innerText = "불러오는 중...";
 
             const profile = await fetchProfile(kolId);
-            let html = "";
-
             if (profile) {
-                html += `
-                    <div class="profile">
-                        <img src="${profile.icon}" />
-                        <div class="profile-info">
-                            <p><strong>@${profile.username}</strong> (${profile.name})</p>
-                            <p>팔로잉: ${profile.following_count.toLocaleString()}명 | 팔로워: ${profile.follower_count.toLocaleString()}명</p>
-                            <p>스마트팔로워: ${profile.smart_follower_count.toLocaleString()}명</p>
-                            <p style="margin-top: 6px; color: #aaa; font-size: 0.95rem;">
-                                🔗 <a href="https://x.com/${profile.username}" target="_blank" style="color: #81d4fa; text-decoration: none;">X 프로필</a>
-                            </p>
-                        </div>
-                    </div>`;
-            }
-
-            progressBar.style.width = "60%";
-
-            const data = await fetchFullMindshare(kolId, selectedTopic);
-
-            if (!data) {
-                html += `<p class="error-msg">❌ ${topicDisplayNames[selectedTopic]} 데이터 없음</p>`;
+                let html = `
+                <div class="profile">
+                    <img src="${profile.icon}" />
+                    <div class="profile-info">
+                        <p><strong>@${profile.username}</strong> (${profile.name})</p>
+                        <p>팔로잉: ${profile.following_count.toLocaleString()}명 | 팔로워: ${profile.follower_count.toLocaleString()}명</p>
+                        <p>스마트팔로워: ${profile.smart_follower_count.toLocaleString()}명</p>
+                        <p style="margin-top: 6px; color: #aaa; font-size: 0.95rem;">
+                            🔗 <a href="https://x.com/${profile.username}" target="_blank" style="color: #81d4fa; text-decoration: none;">X 프로필</a>
+                        </p>
+                    </div>
+                </div>
+                <div id="topicResultBox"></div>
+            `;
+                profileDiv.innerHTML = html;
+                dropdown.style.display = "block";
+                dropdown.value = "UXLINK";
+                await updateMindshare();
             } else {
-                const name = topicDisplayNames[selectedTopic];
-                const m7 = (data.last_7d_mindshare * 100).toFixed(6) + "%";
-                const m30 = (data.last_30d_mindshare * 100).toFixed(6) + "%";
-                const m12 = (data.last_12m_mindshare * 100).toFixed(6) + "%";
-                const d7 = formatDelta(data.change_7d);
-                const d30 = formatDelta(data.change_30d);
-                const d12 = formatDelta(data.change_12m);
-
-                html += `
-                    <div class="topic-result">
-                        <h3>${name}</h3>
-                        <p>최근 7일 마인드쉐어: ${m7} ${d7}</p>
-                        <p>최근 30일 마인드쉐어: ${m30} ${d30}</p>
-                        <p>최근 1년 마인드쉐어: ${m12} ${d12}</p>
-                    </div>`;
+                profileDiv.innerHTML = `<p class="error-msg">❌ 프로필 불러오기 실패</p>`;
             }
 
-            btnText.innerText = "✅ 완료";
             progressBar.style.width = "100%";
             setTimeout(() => {
                 progressBar.style.width = "0%";
                 btnText.innerText = "도미보드 조회";
-                button.disabled = false;
-            }, 1200);
-
-            resultDiv.innerHTML = html;
+            }, 1000);
         }
 
-        // 드롭다운 초기화
+        async function updateMindshare() {
+            if (!currentKolId) return;
+            const topic = document.getElementById("topicSelect").value;
+            const box = document.getElementById("topicResultBox");
+            const progressBar = document.getElementById("progressInsideBtn");
+            const cacheKey = `${currentKolId}_${topic}`;
+
+            if (mindshareCache[cacheKey]) {
+                renderMindshare(mindshareCache[cacheKey], topic);
+                return;
+            }
+
+            box.innerHTML = "<p>조회 중...</p>";
+            progressBar.style.width = "30%";
+
+            const res7 = await fetchMindshareByDuration(currentKolId, topic, "7d");
+            progressBar.style.width = "50%";
+            const res30 = await fetchMindshareByDuration(currentKolId, topic, "30d");
+            progressBar.style.width = "70%";
+            const res12 = await fetchMindshareByDuration(currentKolId, topic, "12m");
+            progressBar.style.width = "90%";
+
+            if (!res7 && !res30 && !res12) {
+                box.innerHTML = `<p class="error-msg">⚠️ 해당 토픽에 참여기록이 없습니다.</p>`;
+                progressBar.style.width = "0%";
+                return;
+            }
+
+            const resultData = { res7, res30, res12 };
+            mindshareCache[cacheKey] = resultData;
+            await renderMindshare(resultData, topic);
+
+            progressBar.style.width = "100%";
+            setTimeout(() => progressBar.style.width = "0%", 800);
+        }
+
+        function formatPercentage(v) {
+            return v != null ? (v * 100).toFixed(6) + "%" : "N/A";
+        }
+
+        function formatRank(v) {
+            return v !== null && v !== undefined && v !== "NA" ? `#${v}` : "N/A";
+        }
+
+        async function renderMindshare({ res7, res30, res12 }, topic) {
+            const box = document.getElementById("topicResultBox");
+
+            const m7 = formatPercentage(res7?.mindshare);
+            const m30 = formatPercentage(res30?.mindshare);
+            const m12 = formatPercentage(res12?.mindshare);
+
+            const r7 = formatRank(res7?.rank);
+            const r30 = formatRank(res30?.rank);
+            const r12 = formatRank(res12?.rank);
+
+            box.innerHTML = `
+        <div class="topic-result">
+            <h3>${topicDisplayNames[topic]}</h3>
+            <p>📊 최근 7일 마인드쉐어: ${m7} | 🏅 랭킹: ${r7}</p>
+            <p>📊 최근 30일 마인드쉐어: ${m30} | 🏅 랭킹: ${r30}</p>
+            <p>📊 최근 1년 마인드쉐어: ${m12} | 🏅 랭킹: ${r12}</p>
+        </div>
+    `;
+        }
+
         const selectEl = document.getElementById("topicSelect");
         topics.forEach(t => {
             const option = document.createElement("option");
@@ -276,7 +332,12 @@
             option.text = topicDisplayNames[t];
             selectEl.appendChild(option);
         });
+
+        document.getElementById("topicSelect").addEventListener("change", updateMindshare);
     </script>
+
+
+
 </body>
 
 </html>
